@@ -174,6 +174,7 @@ export const AppProvider = ({ children }: { children?: React.ReactNode }) => {
       setUsers(prev => [...prev, newUser]);
     } catch (error) {
       console.error("Erro ao adicionar usuário:", error);
+      throw error;
     }
   };
 
@@ -183,15 +184,23 @@ export const AppProvider = ({ children }: { children?: React.ReactNode }) => {
       setUsers(prev => prev.map(u => u.id === savedUser.id ? savedUser : u));
     } catch (error) {
       console.error("Erro ao atualizar usuário:", error);
+      throw error;
     }
   };
 
   const deleteUser = async (id: string) => {
     try {
       await api.deleteUser(id);
-      setUsers(prev => prev.filter(u => u.id !== id));
+      const remaining = await api.getUsers();
+      setUsers(remaining);
+      if (remaining.length === 0) {
+        // Nenhum usuário restante: voltar para o setup
+        setCurrentUser(null);
+        setSetupRequired(true);
+      }
     } catch (error) {
       console.error("Erro ao deletar usuário:", error);
+      throw error;
     }
   };
 
@@ -248,7 +257,7 @@ export const AppProvider = ({ children }: { children?: React.ReactNode }) => {
       return false;
     }
   };
-  
+
   const clearAllTools = async (password: string) => {
     if (!currentUser) return;
     try {

@@ -105,6 +105,45 @@ const initDb = async () => {
         } catch (err) {
             console.error('Error updating history constraint:', err);
         }
+
+        // Step 5: Update dispatcher_id FK to ON DELETE SET NULL
+        // This allows deleting users even if they have history records
+        try {
+            await pool.query(`
+                DO $$
+                DECLARE
+                    fk_name TEXT;
+                BEGIN
+                    -- Find the name of the existing FK constraint on history.dispatcher_id
+                    SELECT tc.constraint_name INTO fk_name
+                    FROM information_schema.table_constraints tc
+                    JOIN information_schema.key_column_usage kcu
+                        ON tc.constraint_name = kcu.constraint_name
+                    WHERE tc.table_name = 'history'
+                        AND tc.constraint_type = 'FOREIGN KEY'
+                        AND kcu.column_name = 'dispatcher_id'
+                    LIMIT 1;
+
+                    IF fk_name IS NOT NULL THEN
+                        EXECUTE 'ALTER TABLE history DROP CONSTRAINT ' || fk_name;
+                    END IF;
+
+                    -- Re-create with ON DELETE SET NULL so deleting a user preserves history
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.table_constraints
+                        WHERE table_name = 'history'
+                          AND constraint_name = 'history_dispatcher_id_fkey_set_null'
+                    ) THEN
+                        ALTER TABLE history
+                            ADD CONSTRAINT history_dispatcher_id_fkey_set_null
+                            FOREIGN KEY (dispatcher_id) REFERENCES users(id) ON DELETE SET NULL;
+                    END IF;
+                END $$;
+            `);
+            console.log('Checked/Updated dispatcher_id FK to ON DELETE SET NULL.');
+        } catch (err) {
+            console.error('Error updating dispatcher_id FK constraint:', err);
+        }
     } catch (err) {
         console.error('Error initializing database:', err);
     }
@@ -283,17 +322,45 @@ app.post('/api/users/:id/reset', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
     const { name, matricula, password, role, active } = req.body;
+    if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'O nome é obrigatório.' });
+    }
+    if (!matricula || !matricula.trim()) {
+        return res.status(400).json({ error: 'A matrícula é obrigatória.' });
+    }
+    const cleanName = name.trim();
+    const cleanMatricula = matricula.trim();
+
     try {
+        // Verificar se matricula ou nome já está em uso (case-insensitive)
+        const checkResult = await pool.query(
+            'SELECT id, name, matricula FROM users WHERE LOWER(TRIM(matricula)) = LOWER($1) OR LOWER(TRIM(name)) = LOWER($2)',
+            [cleanMatricula, cleanName]
+        );
+
+        if (checkResult.rows.length > 0) {
+            const existing = checkResult.rows[0];
+            if (existing.matricula.trim().toLowerCase() === cleanMatricula.toLowerCase()) {
+                return res.status(400).json({ error: 'Não é possível criar: a matrícula/login já está em uso por outro usuário.' });
+            }
+            if (existing.name.trim().toLowerCase() === cleanName.toLowerCase()) {
+                return res.status(400).json({ error: 'Não é possível criar: o nome já está em uso por outro usuário.' });
+            }
+        }
+
         // If password is not provided, use default and force reset
         const finalPassword = password || 'change_me';
         const forceReset = !password; // If no password provided, force reset
 
         const result = await pool.query(
             'INSERT INTO users (name, matricula, password, role, active, force_reset) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [name, matricula, finalPassword, role || 'user', active !== undefined ? active : true, forceReset]
+            [cleanName, cleanMatricula, finalPassword, role || 'user', active !== undefined ? active : true, forceReset]
         );
         res.json(result.rows[0]);
     } catch (err) {
+        if (err.code === '23505') {
+            return res.status(400).json({ error: 'Matrícula/login já está em uso.' });
+        }
         res.status(500).json({ error: err.message });
     }
 });
@@ -301,13 +368,41 @@ app.post('/api/users', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     const { name, matricula, role, active } = req.body;
+    if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'O nome é obrigatório.' });
+    }
+    if (!matricula || !matricula.trim()) {
+        return res.status(400).json({ error: 'A matrícula é obrigatória.' });
+    }
+    const cleanName = name.trim();
+    const cleanMatricula = matricula.trim();
+
     try {
+        // Verificar se a nova matrícula ou nome pertence a outro usuário
+        const checkResult = await pool.query(
+            'SELECT id, name, matricula FROM users WHERE (LOWER(TRIM(matricula)) = LOWER($1) OR LOWER(TRIM(name)) = LOWER($2)) AND id != $3',
+            [cleanMatricula, cleanName, id]
+        );
+
+        if (checkResult.rows.length > 0) {
+            const existing = checkResult.rows[0];
+            if (existing.matricula.trim().toLowerCase() === cleanMatricula.toLowerCase()) {
+                return res.status(400).json({ error: 'A matrícula/login informada já está em uso por outro usuário.' });
+            }
+            if (existing.name.trim().toLowerCase() === cleanName.toLowerCase()) {
+                return res.status(400).json({ error: 'O nome informado já está em uso por outro usuário.' });
+            }
+        }
+
         const result = await pool.query(
             'UPDATE users SET name = $1, matricula = $2, role = $3, active = $4 WHERE id = $5 RETURNING *',
-            [name, matricula, role, active, id]
+            [cleanName, cleanMatricula, role, active, id]
         );
         res.json(result.rows[0]);
     } catch (err) {
+        if (err.code === '23505') {
+            return res.status(400).json({ error: 'Matrícula/login já está em uso.' });
+        }
         res.status(500).json({ error: err.message });
     }
 });

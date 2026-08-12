@@ -30,37 +30,85 @@ const Users = () => {
     setEditingId(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.matricula) return;
+    const trimmedName = formData.name.trim();
+    const trimmedMatricula = formData.matricula.trim();
+
+    if (!trimmedName || !trimmedMatricula) {
+      showNotification("Por favor, preencha todos os campos obrigatórios.", "error");
+      return;
+    }
 
     if (editingId) {
       // Lógica de Edição
+      // Verificar se a matrícula / login já pertence a outro usuário
+      const duplicateMatricula = users.find(
+        u => u.id !== editingId && u.matricula.trim().toLowerCase() === trimmedMatricula.toLowerCase()
+      );
+      if (duplicateMatricula) {
+        showNotification("Não é possível atualizar: a matrícula / login já está em uso por outro usuário.", "error");
+        return;
+      }
+
+      // Verificar se o nome já pertence a outro usuário
+      const duplicateName = users.find(
+        u => u.id !== editingId && u.name.trim().toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (duplicateName) {
+        showNotification("Não é possível atualizar: o nome já está em uso por outro usuário.", "error");
+        return;
+      }
+
       const existingUser = users.find(u => u.id === editingId);
       if (existingUser) {
         const updatedUser: User = {
           ...existingUser,
-          name: formData.name,
-          matricula: formData.matricula,
+          name: trimmedName,
+          matricula: trimmedMatricula,
           role: formData.role as 'admin' | 'user',
         };
-        updateUser(updatedUser);
-        showNotification("Usuário atualizado com sucesso.", "success");
+        try {
+          await updateUser(updatedUser);
+          showNotification("Usuário atualizado com sucesso.", "success");
+          resetForm();
+        } catch (err: any) {
+          showNotification(err.message || "Erro ao atualizar usuário.", "error");
+        }
       }
     } else {
       // Lógica de Criação
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: formData.name,
-        matricula: formData.matricula,
-        active: true,
-        role: formData.role as 'admin' | 'user',
-      };
-      addUser(newUser);
-      showNotification("Usuário criado com sucesso.", "success");
-    }
+      // Verificar se a matrícula / login já está em uso
+      const duplicateMatricula = users.find(
+        u => u.matricula.trim().toLowerCase() === trimmedMatricula.toLowerCase()
+      );
+      if (duplicateMatricula) {
+        showNotification("Não é possível criar: a matrícula / login já está em uso por outro usuário.", "error");
+        return;
+      }
 
-    resetForm();
+      // Verificar se o nome já está em uso
+      const duplicateName = users.find(
+        u => u.name.trim().toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (duplicateName) {
+        showNotification("Não é possível criar: o nome já está em uso por outro usuário.", "error");
+        return;
+      }
+
+      try {
+        await addUser({
+          name: trimmedName,
+          matricula: trimmedMatricula,
+          active: true,
+          role: formData.role as 'admin' | 'user',
+        });
+        showNotification("Usuário criado com sucesso.", "success");
+        resetForm();
+      } catch (err: any) {
+        showNotification(err.message || "Erro ao criar usuário.", "error");
+      }
+    }
   };
 
   const handleEdit = (user: User) => {
@@ -74,8 +122,14 @@ const Users = () => {
 
   // Abre o modal de exclusão
   const requestDelete = (id: string) => {
-    if (id === currentUser?.id) {
-      showNotification("Você não pode excluir seu próprio usuário logado.", "error");
+    const isSelf = id === currentUser?.id;
+    const isLastUser = users.length === 1;
+
+    if (isSelf && !isLastUser) {
+      showNotification(
+        "Você não pode excluir sua própria conta enquanto existem outros usuários no sistema.",
+        "error"
+      );
       return;
     }
     setUserToDelete(id);
@@ -83,15 +137,21 @@ const Users = () => {
   };
 
   // Confirma a exclusão
-  const confirmDelete = () => {
-    if (userToDelete) {
-      deleteUser(userToDelete);
-      if (editingId === userToDelete) {
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
+    const idToDelete = userToDelete;
+    setDeleteModalOpen(false);
+    setUserToDelete(null);
+
+    try {
+      if (editingId === idToDelete) {
         resetForm();
       }
+      await deleteUser(idToDelete);
+      // Se deleteUser não lançou e ainda estamos aqui, é porque ainda há usuários
       showNotification("Usuário excluído com sucesso.", "success");
-      setDeleteModalOpen(false);
-      setUserToDelete(null);
+    } catch (err: any) {
+      showNotification(err.message || "Erro ao excluir usuário.", "error");
     }
   };
 
@@ -135,8 +195,8 @@ const Users = () => {
       {/* Notification Toast */}
       {notification && (
         <div className={`fixed top-4 right-4 z-[70] flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-in slide-in-from-right duration-300 ${notification.type === 'error'
-            ? 'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-800 text-red-800 dark:text-red-100'
-            : 'bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-800 text-green-800 dark:text-green-100'
+          ? 'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-800 text-red-800 dark:text-red-100'
+          : 'bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-800 text-green-800 dark:text-green-100'
           }`}>
           {notification.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
           <span className="font-medium text-sm">{notification.msg}</span>
@@ -228,8 +288,8 @@ const Users = () => {
                 <button
                   type="submit"
                   className={`flex-1 font-medium py-2 rounded-lg transition-colors ${editingId
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-zagfer-600 hover:bg-zagfer-700 text-white'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-zagfer-600 hover:bg-zagfer-700 text-white'
                     }`}
                 >
                   {editingId ? 'Atualizar' : 'Cadastrar'}
@@ -268,8 +328,8 @@ const Users = () => {
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono">{user.matricula}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.active
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                           }`}>
                           {user.active ? 'Ativo' : 'Inativo'}
                         </span>
@@ -279,8 +339,8 @@ const Users = () => {
                           <button
                             onClick={() => handleToggleStatus(user)}
                             className={`p-1.5 rounded-md transition-colors ${user.active
-                                ? 'text-slate-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20'
-                                : 'text-slate-500 hover:bg-green-50 hover:text-green-500 dark:hover:bg-green-900/20'
+                              ? 'text-slate-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20'
+                              : 'text-slate-500 hover:bg-green-50 hover:text-green-500 dark:hover:bg-green-900/20'
                               }`}
                             title={user.active ? "Desativar" : "Ativar"}
                           >
@@ -330,9 +390,15 @@ const Users = () => {
                 <AlertTriangle size={24} />
               </div>
               <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Confirmar Exclusão</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita.
-              </p>
+              {userToDelete === currentUser?.id && users.length === 1 ? (
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  Você está excluindo sua <strong className="text-red-600 dark:text-red-400">própria conta</strong>, que é o <strong>único usuário</strong> do sistema. O sistema será reiniciado e abrirá a tela de configuração do usuário mestre.
+                </p>
+              ) : (
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita.
+                </p>
+              )}
             </div>
             <div className="flex p-4 gap-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700">
               <button
