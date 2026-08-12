@@ -1,0 +1,14 @@
+COMO INICIAR O ZAGFER
+=====================
+
+Para abrir o aplicativo como se fosse um programa nativo do Windows:
+
+1. Certifique-se de ter Python OU Node.js instalado no computador (a maioria dos computadores de desenvolvimento já possui).
+2. Dê um clique duplo no arquivo "ZAGFER_Launcher.bat".
+
+O que o arquivo faz:
+- Cria um servidor local seguro automaticamente.
+- Abre o sistema em uma janela limpa, sem barra de endereços (Modo App), parecendo um software desktop.
+
+IMPORTANTE:
+Não feche a janela preta (o terminal/prompt de comando) enquanto estiver usando o sistema. Ela é o servidor que mantém o aplicativo rodando.

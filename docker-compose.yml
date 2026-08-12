@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  backend:
+    build: ./backend
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_USER=postgres
+      - DB_HOST=db
+      - DB_NAME=zagfer
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - PORT=3001
+    depends_on:
+      - db
+    networks:
+      - app-network
+    volumes:
+      - ./database/schema.sql:/app/schema.sql
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=zagfer
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db-data:

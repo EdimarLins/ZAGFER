@@ -1,0 +1,5 @@
+{
+  "name": "ZAGFER Original",
+  "description": "A minimalist tool management application for workshops featuring tool tracking, user management, and checkout history with PDF generation.",
+  "requestFramePermissions": []
+}
