@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS tools (
 CREATE TABLE IF NOT EXISTS history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   timestamp BIGINT NOT NULL,
-  action_type TEXT NOT NULL CHECK (action_type IN ('CHECKOUT', 'RETURN')),
+  action_type TEXT NOT NULL CHECK (action_type IN ('CHECKOUT', 'RETURN', 'RENEWAL')),
   dispatcher_id UUID REFERENCES users(id),
   dispatcher_name TEXT NOT NULL,
   dispatcher_matricula TEXT NOT NULL,
