@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Download, Search, ArrowRight, ArrowLeft, Eye, X, FileText, Filter, ChevronLeft, ChevronRight, RefreshCw, ArrowRightCircle } from 'lucide-react';
+import { Download, Search, ArrowRight, ArrowLeft, Eye, X, FileText, Filter, ChevronLeft, ChevronRight, RefreshCw, ArrowRightCircle, AlertCircle } from 'lucide-react';
 import { generateCheckoutPDF } from '../services/pdfService';
 import { downloadCSV } from '../services/csvService';
-import { HistoryRecord } from '../types';
+import { HistoryRecord, ToolStatus } from '../types';
 
 const History = () => {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ const History = () => {
   const [filterText, setFilterText] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'CHECKOUT' | 'RETURN' | 'RENEWAL'>('ALL');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [infoMsg, setInfoMsg] = useState('');
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,7 +68,7 @@ const History = () => {
   };
 
   const handleGoToCautela = (record: HistoryRecord) => {
-    let targetCheckoutId = record.id;
+    let targetCheckout = record;
     if (record.actionType === 'RENEWAL' || record.actionType === 'RETURN') {
       const originalCheckout = history.find(h =>
         h.actionType === 'CHECKOUT' &&
@@ -75,10 +76,25 @@ const History = () => {
         h.toolIds.some(tid => record.toolIds.includes(tid))
       );
       if (originalCheckout) {
-        targetCheckoutId = originalCheckout.id;
+        targetCheckout = originalCheckout;
       }
     }
-    navigate('/return', { state: { checkoutId: targetCheckoutId } });
+
+    // Verificar se há ferramentas desta cautela que ainda estão indisponíveis (em aberto)
+    const isCautelaActive = targetCheckout.toolIds.some(toolId => {
+      const tool = tools.find(t => t.id === toolId);
+      if (!tool || tool.status !== ToolStatus.UNAVAILABLE) return false;
+      // Verificar se este checkout é o mais recente para esta ferramenta
+      const latestCheckout = history.find(h => h.actionType === 'CHECKOUT' && h.toolIds.includes(toolId));
+      return latestCheckout?.id === targetCheckout.id;
+    });
+
+    if (isCautelaActive) {
+      navigate('/return', { state: { checkoutId: targetCheckout.id } });
+    } else {
+      setInfoMsg('Esta cautela já foi concluída (todas as ferramentas foram devolvidas).');
+      setTimeout(() => setInfoMsg(''), 5000);
+    }
   };
 
   const handleDownload = async (recordId: string) => {
@@ -149,6 +165,21 @@ const History = () => {
 
   return (
     <div className="space-y-6 relative pb-8">
+      {infoMsg && (
+        <div className="bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 p-4 rounded-xl flex items-center justify-between gap-3 border border-amber-200 dark:border-amber-800 animate-fade-in sticky top-4 z-50 shadow-md">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="shrink-0 text-amber-500" size={20} />
+            <span className="font-medium">{infoMsg}</span>
+          </div>
+          <button
+            onClick={() => setInfoMsg('')}
+            className="p-1 hover:bg-amber-100 dark:hover:bg-amber-800/50 rounded-lg text-amber-600 dark:text-amber-400 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Cautelas</h2>
