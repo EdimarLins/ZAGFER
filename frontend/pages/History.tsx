@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Download, Search, ArrowRight, ArrowLeft, Eye, X, FileText, Filter, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Download, Search, ArrowRight, ArrowLeft, Eye, X, FileText, Filter, ChevronLeft, ChevronRight, RefreshCw, ArrowRightCircle } from 'lucide-react';
 import { generateCheckoutPDF } from '../services/pdfService';
 import { downloadCSV } from '../services/csvService';
 import { HistoryRecord } from '../types';
 
 const History = () => {
+  const navigate = useNavigate();
   const { history, tools, currentUser } = useApp();
   const [filterText, setFilterText] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'CHECKOUT' | 'RETURN' | 'RENEWAL'>('ALL');
@@ -62,6 +64,21 @@ const History = () => {
     });
 
     return { record, recordTools };
+  };
+
+  const handleGoToCautela = (record: HistoryRecord) => {
+    let targetCheckoutId = record.id;
+    if (record.actionType === 'RENEWAL' || record.actionType === 'RETURN') {
+      const originalCheckout = history.find(h =>
+        h.actionType === 'CHECKOUT' &&
+        h.timestamp <= record.timestamp &&
+        h.toolIds.some(tid => record.toolIds.includes(tid))
+      );
+      if (originalCheckout) {
+        targetCheckoutId = originalCheckout.id;
+      }
+    }
+    navigate('/return', { state: { checkoutId: targetCheckoutId } });
   };
 
   const handleDownload = async (recordId: string) => {
@@ -221,7 +238,16 @@ const History = () => {
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap md:flex-nowrap gap-2 items-center">
+              <button
+                onClick={() => handleGoToCautela(record)}
+                className="flex items-center justify-center gap-2 px-3 py-2 bg-zagfer-500 hover:bg-zagfer-600 text-white rounded-lg transition-colors font-medium text-sm shadow-sm hover:shadow"
+                title="Ir para Cautela"
+              >
+                <ArrowRightCircle size={18} />
+                <span className="hidden md:inline">Ir para Cautela</span>
+              </button>
+
               <button
                 onClick={() => handlePreview(record.id)}
                 className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors font-medium text-sm"

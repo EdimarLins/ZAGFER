@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
 import { ToolStatus, HistoryRecord, Tool } from '../types';
 import { format, addHours } from 'date-fns';
@@ -20,6 +21,7 @@ interface ActiveCheckout {
 }
 
 const Return = () => {
+  const location = useLocation();
   const { tools, history, currentUser, updateToolStatus, addHistoryRecord, updateHistoryRecord } = useApp();
   const [search, setSearch] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -108,6 +110,22 @@ const Return = () => {
       )
       .sort((a, b) => b.record.timestamp - a.record.timestamp);
   }, [tools, history, search]);
+
+  // Se veio redirecionado com checkoutId específico
+  useEffect(() => {
+    const targetCheckoutId = (location.state as { checkoutId?: string })?.checkoutId;
+    if (targetCheckoutId) {
+      const match = activeCheckouts.find(c => c.id === targetCheckoutId);
+      if (match) {
+        setSelectedCheckout(match);
+        setToolsToReturnIds([]);
+      } else {
+        setSuccessMsg('Esta cautela já foi concluída (todas as ferramentas foram devolvidas).');
+        setTimeout(() => setSuccessMsg(''), 4000);
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, activeCheckouts]);
 
   // Atualiza o selectedCheckout quando o history muda (para refletir a renovação imediatamente)
   useEffect(() => {
