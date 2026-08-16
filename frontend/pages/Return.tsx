@@ -11,6 +11,11 @@ import { generateCheckoutPDF } from '../services/pdfService';
 interface ActiveCheckout {
   id: string; // Usamos o ID do registro original
   record: HistoryRecord;
+  latestDispatcher: {
+    id: string;
+    name: string;
+    matricula: string;
+  };
   pendingTools: Tool[];
 }
 
@@ -53,9 +58,29 @@ const Return = () => {
       if (lastCheckout) {
         // Se ainda não adicionamos esta cautela ao mapa, adiciona
         if (!checkoutsMap[lastCheckout.id]) {
+          // Encontrar a renovação mais recente desta cautela (se houver)
+          const renewals = history.filter(h =>
+            h.actionType === 'RENEWAL' &&
+            h.timestamp >= lastCheckout.timestamp &&
+            h.toolIds.some(tid => lastCheckout.toolIds.includes(tid))
+          ).sort((a, b) => b.timestamp - a.timestamp);
+
+          const latestRenewal = renewals[0];
+
+          const latestDispatcher = latestRenewal ? {
+            id: latestRenewal.dispatcherId,
+            name: latestRenewal.dispatcherName,
+            matricula: latestRenewal.dispatcherMatricula
+          } : {
+            id: lastCheckout.dispatcherId,
+            name: lastCheckout.dispatcherName,
+            matricula: lastCheckout.dispatcherMatricula
+          };
+
           checkoutsMap[lastCheckout.id] = {
             id: lastCheckout.id,
             record: lastCheckout,
+            latestDispatcher,
             pendingTools: []
           };
         }
@@ -76,6 +101,7 @@ const Return = () => {
       .filter(checkout =>
         checkout.record.responsibleName.toLowerCase().includes(search.toLowerCase()) ||
         checkout.record.responsibleMatricula.includes(search) ||
+        checkout.latestDispatcher.name.toLowerCase().includes(search.toLowerCase()) ||
         checkout.pendingTools.some(t => t.name.toLowerCase().includes(search.toLowerCase()))
       )
       .sort((a, b) => b.record.timestamp - a.record.timestamp);
@@ -115,21 +141,28 @@ const Return = () => {
     const toolsBeingReturned = tools.filter(t => toolsToReturnIds.includes(t.id));
     const toolsSummary = toolsBeingReturned.map(t => t.name).join(', ');
 
-    // Criar registro de devolução
+    const dispatcher = selectedCheckout.latestDispatcher;
+
+    // Criar registro de devolução:
+    // - dispatcherName: despachante da cautela (retirada ou última renovação) para o cabeçalho
+    // - receivedByName: usuário logado que clicou em receber a devolução para o rodapé
     const returnRecord = {
       timestamp: Date.now(),
       actionType: 'RETURN' as const,
 
-      dispatcherId: currentUser.id,
-      dispatcherName: currentUser.name,
-      dispatcherMatricula: currentUser.matricula,
+      dispatcherId: dispatcher.id || currentUser.id,
+      dispatcherName: dispatcher.name || currentUser.name,
+      dispatcherMatricula: dispatcher.matricula || currentUser.matricula,
 
       // Mantém os dados do responsável original
       responsibleName: selectedCheckout.record.responsibleName,
       responsibleMatricula: selectedCheckout.record.responsibleMatricula,
 
       toolIds: toolsToReturnIds,
-      toolsSummary
+      toolsSummary,
+
+      // Usuário que clicou em receber de fato (logado no momento)
+      receivedByName: currentUser.name
     };
 
     // Gerar PDF (agora Async)
@@ -324,6 +357,10 @@ const Return = () => {
                   <div>
                     <label className="block text-xs font-medium text-slate-500 uppercase mb-1">OM/Seção</label>
                     <div className="text-slate-900 dark:text-white font-mono">{selectedCheckout.record.responsibleMatricula}</div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Despachante</label>
+                    <div className="text-slate-900 dark:text-white font-medium">{selectedCheckout.latestDispatcher.name}</div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Data da Retirada</label>

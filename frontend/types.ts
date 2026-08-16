@@ -43,4 +43,7 @@ export interface HistoryRecord {
 
   // New field for deadline
   expectedReturnDate?: number;
+
+  // Usuário que recebeu a devolução
+  receivedByName?: string;
 }

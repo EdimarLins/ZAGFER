@@ -122,7 +122,8 @@ export const generateCheckoutPDF = async (
     yPos += 6;
     doc.setTextColor(0, 0, 0); // Black
     doc.setFont('helvetica', 'bold');
-    doc.text(`Nova Previsão Devolução: ${format(record.expectedReturnDate, "dd/MM/yyyy HH:mm", { locale: ptBR })}`, margin, yPos);
+    const deadlineLabel = effectiveMode === 'RENEWAL' ? 'Nova Previsão Devolução:' : 'Previsão de devolução:';
+    doc.text(`${deadlineLabel} ${format(record.expectedReturnDate, "dd/MM/yyyy HH:mm", { locale: ptBR })}`, margin, yPos);
     doc.setFont('helvetica', 'normal');
   }
 
@@ -202,10 +203,11 @@ export const generateCheckoutPDF = async (
     yPos += 15;
 
   } else {
-    // RETURN: Apenas frase de recebimento
+    // RETURN: Apenas frase de recebimento (usuário que efetivamente recebeu a devolução)
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0); // Black text
-    doc.text(`Recebido pelo ${record.dispatcherName}`, margin, yPos);
+    const receiverName = record.receivedByName || record.dispatcherName;
+    doc.text(`Recebido pelo ${receiverName}`, margin, yPos);
 
     yPos += 15;
   }

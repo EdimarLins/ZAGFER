@@ -144,6 +144,21 @@ const initDb = async () => {
         } catch (err) {
             console.error('Error updating dispatcher_id FK constraint:', err);
         }
+
+        // Step 6: Ensure received_by_name column exists in history
+        try {
+            await pool.query(`
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='history' AND column_name='received_by_name') THEN
+                        ALTER TABLE history ADD COLUMN received_by_name TEXT;
+                    END IF;
+                END $$;
+            `);
+            console.log('Checked/Created received_by_name column.');
+        } catch (err) {
+            console.error('Error adding received_by_name column:', err);
+        }
     } catch (err) {
         console.error('Error initializing database:', err);
     }
@@ -453,7 +468,8 @@ app.get('/api/history', async (req, res) => {
                 responsible_matricula as "responsibleMatricula", 
                 tool_ids as "toolIds", 
                 tools_summary as "toolsSummary", 
-                expected_return_date as "expectedReturnDate"
+                expected_return_date as "expectedReturnDate",
+                received_by_name as "receivedByName"
             FROM history 
             ORDER BY timestamp DESC
         `);
@@ -464,13 +480,13 @@ app.get('/api/history', async (req, res) => {
 });
 
 app.post('/api/history', async (req, res) => {
-    const { timestamp, actionType, dispatcherId, dispatcherName, dispatcherMatricula, responsibleName, responsibleMatricula, toolIds, toolsSummary, expectedReturnDate } = req.body;
+    const { timestamp, actionType, dispatcherId, dispatcherName, dispatcherMatricula, responsibleName, responsibleMatricula, toolIds, toolsSummary, expectedReturnDate, receivedByName } = req.body;
     try {
         const result = await pool.query(
             `INSERT INTO history (
                 timestamp, action_type, dispatcher_id, dispatcher_name, dispatcher_matricula, 
-                responsible_name, responsible_matricula, tool_ids, tools_summary, expected_return_date
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+                responsible_name, responsible_matricula, tool_ids, tools_summary, expected_return_date, received_by_name
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
             RETURNING 
                 id, 
                 timestamp, 
@@ -482,8 +498,9 @@ app.post('/api/history', async (req, res) => {
                 responsible_matricula as "responsibleMatricula", 
                 tool_ids as "toolIds", 
                 tools_summary as "toolsSummary", 
-                expected_return_date as "expectedReturnDate"`,
-            [timestamp, actionType, dispatcherId, dispatcherName, dispatcherMatricula, responsibleName, responsibleMatricula, toolIds, toolsSummary, expectedReturnDate]
+                expected_return_date as "expectedReturnDate",
+                received_by_name as "receivedByName"`,
+            [timestamp, actionType, dispatcherId, dispatcherName, dispatcherMatricula, responsibleName, responsibleMatricula, toolIds, toolsSummary, expectedReturnDate, receivedByName]
         );
         res.json(result.rows[0]);
     } catch (err) {
@@ -515,7 +532,8 @@ app.put('/api/history/:id', async (req, res) => {
             responsibleMatricula: row.responsible_matricula,
             toolIds: row.tool_ids,
             toolsSummary: row.tools_summary,
-            expectedReturnDate: row.expected_return_date ? parseInt(row.expected_return_date) : null
+            expectedReturnDate: row.expected_return_date ? parseInt(row.expected_return_date) : null,
+            receivedByName: row.received_by_name || null
         };
         res.json(mappedResult);
     } catch (err) {
