@@ -31,5 +31,6 @@ CREATE TABLE IF NOT EXISTS history (
   tool_ids TEXT[] NOT NULL, -- Array of tool IDs
   tools_summary TEXT NOT NULL,
   expected_return_date BIGINT,
-  received_by_name TEXT
+  received_by_name TEXT,
+  observations TEXT
 );

@@ -29,10 +29,12 @@ const Return = () => {
 
   // State para selecionar ferramentas dentro da cautela para devolver
   const [toolsToReturnIds, setToolsToReturnIds] = useState<string[]>([]);
+  const [returnObservations, setReturnObservations] = useState('');
 
   // Estados para Renovação
   const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
   const [newDeadline, setNewDeadline] = useState('');
+  const [renewObservations, setRenewObservations] = useState('');
 
   // Estados para Modal de Sucesso/Download
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -162,7 +164,9 @@ const Return = () => {
       toolsSummary,
 
       // Usuário que clicou em receber de fato (logado no momento)
-      receivedByName: currentUser.name
+      receivedByName: currentUser.name,
+
+      observations: returnObservations.trim() || undefined
     };
 
     // Gerar PDF (agora Async)
@@ -179,6 +183,7 @@ const Return = () => {
     // Resetar UI
     setSelectedCheckout(null);
     setToolsToReturnIds([]);
+    setReturnObservations('');
 
     // Mostrar modal de sucesso
     setShowSuccessModal(true);
@@ -209,6 +214,7 @@ const Return = () => {
       const currentDeadline = selectedCheckout.record.expectedReturnDate;
       const defaultDate = currentDeadline ? new Date(currentDeadline) : addHours(new Date(), 24);
       setNewDeadline(format(defaultDate, "yyyy-MM-dd'T'HH:mm"));
+      setRenewObservations('');
       setIsRenewModalOpen(true);
     }
   };
@@ -239,7 +245,8 @@ const Return = () => {
 
       toolIds: selectedCheckout.pendingTools.map(t => t.id),
       toolsSummary: selectedCheckout.pendingTools.map(t => t.name).join(', '),
-      expectedReturnDate: newTimestamp
+      expectedReturnDate: newTimestamp,
+      observations: renewObservations.trim() || undefined
     };
 
     addHistoryRecord(renewalRecord);
@@ -379,6 +386,15 @@ const Return = () => {
                     </div>
                   </div>
 
+                  {selectedCheckout.record.observations && (
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Observações da Cautela</label>
+                      <div className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                        {selectedCheckout.record.observations}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-3">
 
                     {/* Botão Renovar */}
@@ -390,7 +406,18 @@ const Return = () => {
                       Renovar Cautela
                     </button>
 
-                    <div className="flex justify-between items-center mt-2 mb-1">
+                    <div className="mt-2">
+                      <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Observações da Devolução (Opcional)</label>
+                      <textarea
+                        value={returnObservations}
+                        onChange={(e) => setReturnObservations(e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-green-500 text-slate-900 dark:text-white text-sm resize-none"
+                        placeholder="Ex: Condição de entrega, avarias, etc."
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center mt-1 mb-1">
                       <span className="text-sm text-slate-500">A devolver:</span>
                       <span className={`font-bold text-xl ${toolsToReturnIds.length > 0 ? 'text-green-600' : 'text-slate-300'}`}>
                         {toolsToReturnIds.length} <span className="text-sm font-normal text-slate-400">/ {selectedCheckout.pendingTools.length}</span>
@@ -476,12 +503,12 @@ const Return = () => {
               </button>
             </div>
 
-            <div className="p-6">
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Selecione o novo prazo de devolução para esta cautela.
               </p>
 
-              <div className="space-y-1">
+              <div>
                 <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Novo Prazo</label>
                 <div className="relative">
                   <CalendarClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
@@ -492,6 +519,17 @@ const Return = () => {
                     className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white text-sm"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Observações (Opcional)</label>
+                <textarea
+                  value={renewObservations}
+                  onChange={(e) => setRenewObservations(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white text-sm resize-none"
+                  placeholder="Ex: Motivo da renovação, estado atual, etc."
+                />
               </div>
             </div>
 

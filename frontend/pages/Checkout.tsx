@@ -15,6 +15,7 @@ const Checkout = () => {
   // Manual Entry States
   const [responsibleName, setResponsibleName] = useState('');
   const [responsibleMatricula, setResponsibleMatricula] = useState('');
+  const [observations, setObservations] = useState('');
 
   // Deadline State (Default +24h)
   const [deadline, setDeadline] = useState('');
@@ -70,7 +71,8 @@ const Checkout = () => {
       toolIds: selectedToolIds,
       toolsSummary,
 
-      expectedReturnDate: deadlineTimestamp
+      expectedReturnDate: deadlineTimestamp,
+      observations: observations.trim() || undefined
     };
 
     // Generate PDF in memory (Async now)
@@ -89,6 +91,7 @@ const Checkout = () => {
     setSearch('');
     setResponsibleName('');
     setResponsibleMatricula('');
+    setObservations('');
     setDeadline(format(addHours(new Date(), 24), "yyyy-MM-dd'T'HH:mm"));
 
     // Show Success Modal instead of auto-downloading
@@ -166,6 +169,17 @@ const Checkout = () => {
                     className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-zagfer-500 text-slate-900 dark:text-white text-sm"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Observações (Opcional)</label>
+                <textarea
+                  value={observations}
+                  onChange={(e) => setObservations(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-zagfer-500 text-slate-900 dark:text-white text-sm resize-none"
+                  placeholder="Ex: Estado das ferramentas, finalidade, etc."
+                />
               </div>
 
               <div>

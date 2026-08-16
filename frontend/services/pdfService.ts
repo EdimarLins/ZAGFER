@@ -169,6 +169,32 @@ export const generateCheckoutPDF = async (
     yPos += 8;
   });
 
+  // Observações (abaixo da lista de ferramentas)
+  yPos += 4;
+  doc.setFontSize(9);
+  doc.setTextColor(0, 0, 0);
+
+  const obsText = record.observations && record.observations.trim() ? record.observations.trim() : "Não há.";
+  const prefix = "OBSERVAÇÕES: ";
+  doc.setFont('helvetica', 'bold');
+  const prefixWidth = doc.getTextWidth(prefix);
+  doc.text(prefix, margin + 2, yPos);
+
+  doc.setFont('helvetica', 'normal');
+  const obsLines = doc.splitTextToSize(obsText, 185 - prefixWidth);
+
+  if (obsLines.length === 1) {
+    doc.text(obsText, margin + 2 + prefixWidth, yPos);
+    yPos += 12;
+  } else {
+    doc.text(obsLines[0], margin + 2 + prefixWidth, yPos);
+    for (let i = 1; i < obsLines.length; i++) {
+      yPos += 4.5;
+      doc.text(obsLines[i], margin + 2, yPos);
+    }
+    yPos += 10;
+  }
+
   // Footer Area
   yPos += 20;
 

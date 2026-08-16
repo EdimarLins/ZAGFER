@@ -159,6 +159,21 @@ const initDb = async () => {
         } catch (err) {
             console.error('Error adding received_by_name column:', err);
         }
+
+        // Step 7: Ensure observations column exists in history
+        try {
+            await pool.query(`
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='history' AND column_name='observations') THEN
+                        ALTER TABLE history ADD COLUMN observations TEXT;
+                    END IF;
+                END $$;
+            `);
+            console.log('Checked/Created observations column.');
+        } catch (err) {
+            console.error('Error adding observations column:', err);
+        }
     } catch (err) {
         console.error('Error initializing database:', err);
     }
@@ -469,7 +484,8 @@ app.get('/api/history', async (req, res) => {
                 tool_ids as "toolIds", 
                 tools_summary as "toolsSummary", 
                 expected_return_date as "expectedReturnDate",
-                received_by_name as "receivedByName"
+                received_by_name as "receivedByName",
+                observations
             FROM history 
             ORDER BY timestamp DESC
         `);
@@ -480,13 +496,13 @@ app.get('/api/history', async (req, res) => {
 });
 
 app.post('/api/history', async (req, res) => {
-    const { timestamp, actionType, dispatcherId, dispatcherName, dispatcherMatricula, responsibleName, responsibleMatricula, toolIds, toolsSummary, expectedReturnDate, receivedByName } = req.body;
+    const { timestamp, actionType, dispatcherId, dispatcherName, dispatcherMatricula, responsibleName, responsibleMatricula, toolIds, toolsSummary, expectedReturnDate, receivedByName, observations } = req.body;
     try {
         const result = await pool.query(
             `INSERT INTO history (
                 timestamp, action_type, dispatcher_id, dispatcher_name, dispatcher_matricula, 
-                responsible_name, responsible_matricula, tool_ids, tools_summary, expected_return_date, received_by_name
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+                responsible_name, responsible_matricula, tool_ids, tools_summary, expected_return_date, received_by_name, observations
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
             RETURNING 
                 id, 
                 timestamp, 
@@ -499,8 +515,9 @@ app.post('/api/history', async (req, res) => {
                 tool_ids as "toolIds", 
                 tools_summary as "toolsSummary", 
                 expected_return_date as "expectedReturnDate",
-                received_by_name as "receivedByName"`,
-            [timestamp, actionType, dispatcherId, dispatcherName, dispatcherMatricula, responsibleName, responsibleMatricula, toolIds, toolsSummary, expectedReturnDate, receivedByName]
+                received_by_name as "receivedByName",
+                observations`,
+            [timestamp, actionType, dispatcherId, dispatcherName, dispatcherMatricula, responsibleName, responsibleMatricula, toolIds, toolsSummary, expectedReturnDate, receivedByName, observations || null]
         );
         res.json(result.rows[0]);
     } catch (err) {
@@ -510,11 +527,11 @@ app.post('/api/history', async (req, res) => {
 
 app.put('/api/history/:id', async (req, res) => {
     const { id } = req.params;
-    const { expectedReturnDate } = req.body;
+    const { expectedReturnDate, observations } = req.body;
     try {
         const result = await pool.query(
-            'UPDATE history SET expected_return_date = $1 WHERE id = $2 RETURNING *',
-            [expectedReturnDate, id]
+            'UPDATE history SET expected_return_date = COALESCE($1, expected_return_date), observations = COALESCE($2, observations) WHERE id = $3 RETURNING *',
+            [expectedReturnDate !== undefined ? expectedReturnDate : null, observations !== undefined ? observations : null, id]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'History record not found' });
@@ -533,7 +550,8 @@ app.put('/api/history/:id', async (req, res) => {
             toolIds: row.tool_ids,
             toolsSummary: row.tools_summary,
             expectedReturnDate: row.expected_return_date ? parseInt(row.expected_return_date) : null,
-            receivedByName: row.received_by_name || null
+            receivedByName: row.received_by_name || null,
+            observations: row.observations || null
         };
         res.json(mappedResult);
     } catch (err) {

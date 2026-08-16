@@ -27,7 +27,8 @@ const History = () => {
       record.responsibleName.toLowerCase().includes(filterText.toLowerCase()) ||
       record.responsibleMatricula.includes(filterText) ||
       record.toolsSummary.toLowerCase().includes(filterText.toLowerCase()) ||
-      record.dispatcherName.toLowerCase().includes(filterText.toLowerCase());
+      record.dispatcherName.toLowerCase().includes(filterText.toLowerCase()) ||
+      (record.observations && record.observations.toLowerCase().includes(filterText.toLowerCase()));
 
     const matchesType = filterType === 'ALL' || record.actionType === filterType;
 
@@ -125,6 +126,7 @@ const History = () => {
       { header: 'Despachante', accessor: (h: HistoryRecord) => h.dispatcherName },
       { header: 'Ferramentas', accessor: (h: HistoryRecord) => h.toolsSummary },
       { header: 'Previsão Devolução', accessor: (h: HistoryRecord) => h.expectedReturnDate ? format(h.expectedReturnDate, "dd/MM/yyyy HH:mm") : '' },
+      { header: 'Observações', accessor: (h: HistoryRecord) => h.observations || 'Não há.' },
     ], 'ZAGFER_Historico_Cautelas.csv');
   };
 
@@ -210,6 +212,13 @@ const History = () => {
                 <span className="font-medium text-slate-500 dark:text-slate-400 block mb-1 text-xs uppercase">Ferramentas:</span>
                 {record.toolsSummary}
               </p>
+
+              {record.observations && (
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                  <span className="font-medium text-slate-500 dark:text-slate-400 block mb-0.5 text-xs uppercase">Observações:</span>
+                  {record.observations}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2">

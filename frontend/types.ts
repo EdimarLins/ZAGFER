@@ -46,4 +46,7 @@ export interface HistoryRecord {
 
   // Usuário que recebeu a devolução
   receivedByName?: string;
+
+  // Observações adicionais da operação
+  observations?: string;
 }
