@@ -157,16 +157,23 @@ export const generateCheckoutPDF = async (
   doc.setFont('helvetica', 'normal');
 
   // List Tools
+  const colWidths = { name: 68, bmp: 20, category: 35, sector: 37 };
   tools.forEach((tool) => {
     // Truncate tool name if too long to avoid overlapping BMP column
     const toolName = tool.name + (tool.size ? ` (${tool.size})` : '');
     const truncatedName = toolName.length > 35 ? toolName.substring(0, 32) + '...' : toolName;
 
+    // Wrap category and sector text to avoid overlap
+    const categoryLines = doc.splitTextToSize(tool.category, colWidths.category);
+    const sectorLines = doc.splitTextToSize(tool.sector, colWidths.sector);
+    const maxLines = Math.max(categoryLines.length, sectorLines.length, 1);
+    const rowHeight = maxLines * 5 + 3;
+
     doc.text(truncatedName, margin + 2, yPos);
     doc.text(tool.bmp || '-', margin + 75, yPos);
-    doc.text(tool.category, margin + 100, yPos);
-    doc.text(tool.sector, margin + 135, yPos);
-    yPos += 8;
+    doc.text(categoryLines, margin + 100, yPos);
+    doc.text(sectorLines, margin + 135, yPos);
+    yPos += rowHeight;
   });
 
   // Observações (abaixo da lista de ferramentas)

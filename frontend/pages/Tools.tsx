@@ -376,57 +376,78 @@ const Tools = () => {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome da Ferramenta *</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome da Ferramenta * <span className="text-xs text-slate-400">(máx. 20 caracteres)</span></label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9À-ÿ ]/g, '').slice(0, 20);
+                    setFormData({ ...formData, name: val });
+                  }}
+                  maxLength={20}
                   className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-zagfer-500 text-slate-900 dark:text-white"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Categoria *</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Categoria * <span className="text-xs text-slate-400">(máx. 20)</span></label>
                   <input
                     type="text"
                     value={formData.category}
-                    onChange={e => setFormData({ ...formData, category: e.target.value })}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^a-zA-Z0-9À-ÿ ]/g, '').slice(0, 20);
+                      setFormData({ ...formData, category: val });
+                    }}
+                    maxLength={20}
                     className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-zagfer-500 text-slate-900 dark:text-white"
                     required
                     placeholder="Ex: Elétrica"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tamanho</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tamanho <span className="text-xs text-slate-400">(máx. 10)</span></label>
                   <input
                     type="text"
                     value={formData.size || ''}
-                    onChange={e => setFormData({ ...formData, size: e.target.value })}
+                    onChange={e => {
+                      const val = e.target.value.slice(0, 10);
+                      setFormData({ ...formData, size: val });
+                    }}
+                    maxLength={10}
                     className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-zagfer-500 text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Setor *</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Setor * <span className="text-xs text-slate-400">(máx. 20)</span></label>
                   <input
                     type="text"
                     value={formData.sector}
-                    onChange={e => setFormData({ ...formData, sector: e.target.value })}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^a-zA-Z0-9À-ÿ ]/g, '').slice(0, 20);
+                      setFormData({ ...formData, sector: val });
+                    }}
+                    maxLength={20}
                     className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-zagfer-500 text-slate-900 dark:text-white"
                     required
                     placeholder="Ex: Manutenção"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">BMP</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">BMP <span className="text-xs text-slate-400">(apenas números, máx. 8)</span></label>
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={formData.bmp || ''}
-                    onChange={e => setFormData({ ...formData, bmp: e.target.value })}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
+                      setFormData({ ...formData, bmp: val });
+                    }}
+                    maxLength={8}
                     className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-zagfer-500 text-slate-900 dark:text-white"
-                    placeholder="Cód. Patrimônio"
+                    placeholder="Ex: 12345678"
                   />
                 </div>
               </div>
